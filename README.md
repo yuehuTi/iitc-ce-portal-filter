@@ -6,11 +6,9 @@
 
 在右侧 Toolbox 上方加一个过滤框，地图只显示符合表达式的 Portal。表达式沿用 [Portals list](https://github.com/yuehuTi/iitc-ce-portals-list) 的写法，但只用地图上已经有的数据。
 
-不能使用需要读取 Portal 详情才能判断的mods、resonator、owner和shields。
+不能使用需要读取 Portal 详情才能判断的mods、resonator、owner和shields作为条件。
 
-到访、占领和侦察可以写进表达式。地图上还没有这些记录时会去读 Portal 详情，读到后再筛；记录未知时先不显示，`NOT visited` 也不会把未知的 Portal 算进来。
-
-可用字段：名字、等级、阵营、血量、共振器数量、链接数、区域数、敌方 AP、到访、占领、侦察。
+可用的字段：名字、等级、阵营、血量、共振器数量、link数、field数、敌方 AP、cap、visit、scout。
 
 ```
 level >= 6 AND team = ENL

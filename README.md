@@ -1,11 +1,10 @@
 # IITC-CE Portal filter
-
-在右侧 Toolbox 上方加一个过滤框，地图只显示符合表达式的 Portal。表达式沿用 [Portals list](https://github.com/yuehuTi/iitc-ce-portals-list) 的写法，但只用地图上已经有的数据。
-
 <img width="1397" height="369" alt="图片" src="https://github.com/user-attachments/assets/27b65f0d-d5d6-4933-9224-1b3f57c12ba8" />
+<br>
 
 <img width="1291" height="359" alt="图片" src="https://github.com/user-attachments/assets/7c5f6383-ccd0-4a68-92b9-758806df16fe" />
 
+在右侧 Toolbox 上方加一个过滤框，地图只显示符合表达式的 Portal。表达式沿用 [Portals list](https://github.com/yuehuTi/iitc-ce-portals-list) 的写法，但只用地图上已经有的数据。
 
 不能使用需要读取 Portal 详情才能判断的mods、resonator、owner和shields。
 

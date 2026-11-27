@@ -6,18 +6,18 @@
 
 在右侧 Toolbox 上方加一个过滤框，地图只显示符合表达式的 Portal。表达式沿用 [Portals list](https://github.com/yuehuTi/iitc-ce-portals-list) 的写法，但只用地图上已经有的数据。
 
-不能使用需要读取 Portal 详情才能判断的mods、resonator、owner和shields作为条件。
+表达式可用的查询条件为：名字、等级、阵营、血量、共振器数量、link数、field数、敌方 AP、cap、visit、scout。
 
-可用的字段：名字、等级、阵营、血量、共振器数量、link数、field数、敌方 AP、cap、visit、scout。
+不能使用需要读取 Portal 详情才能判断条件，包括：mod详情、resonator详情（各个res的owner、等级、血量）、owner和shield总值作为条件。
 
-```
+表达式，举例```
 level >= 6 AND team = ENL
 等级:6..8 阵营 = 绿
 name ~ park
 team = enemy health < 50
 ```
 
-点过滤或按回车生效。点重置，或把表达式清空后再过滤，恢复全部 Portal。表达式写错时输入标红，当前地图不变。上次成功的表达式会记住，刷新后继续生效。
+点过滤或按回车生效。点重置，或把表达式清空后再过滤，恢复全部 Portal。表达式写错时输入标红，当前地图不变。会自动记忆上次成功的表达式会，刷新/重开后仍然生效。
 
 ## 文件
 

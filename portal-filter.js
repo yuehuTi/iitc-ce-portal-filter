@@ -34,7 +34,9 @@ var I18N_EN = {
   queryFilter: 'Filter',
   queryReset: 'Reset',
   help: 'Help',
-  queryTip: 'Show only portals that match. Reset, or an empty expression, shows every portal again. An invalid expression turns red and leaves the map unchanged.',
+  queryTip: 'Portals that match this expression stay on the map. An invalid expression turns red and leaves the map unchanged.',
+  queryFilterTip: 'Apply the expression.',
+  queryResetTip: 'Clear the expression and show every portal again.',
   queryInvalid: 'Invalid expression',
   queryIncomplete: 'Incomplete expression',
   queryParen: 'Missing closing parenthesis',
@@ -46,12 +48,14 @@ var I18N_EN = {
   loadingHistory: 'Loading visit history, {n} left',
 };
 var I18N_ZH = {
-  title: 'Portal 过滤',
+  title: 'Portal filter',
   queryPlaceholder: 'level >= 6 AND team = ENL',
   queryFilter: '过滤',
   queryReset: '重置',
   help: '帮助',
-  queryTip: '只显示符合表达式的 Portal。点重置，或表达式为空，即显示全部。表达式无效时输入标红，当前地图不变。',
+  queryTip: '地图只保留符合这个表达式的 Portal。表达式无效时输入标红，当前地图不变。',
+  queryFilterTip: '按表达式过滤。',
+  queryResetTip: '清空表达式，重新显示全部 Portal。',
   queryInvalid: '表达式无效',
   queryIncomplete: '表达式不完整',
   queryParen: '缺少右括号',
@@ -1044,8 +1048,8 @@ function mountControl() {
 
   var actions = document.createElement('div');
   actions.className = 'portal-filter-actions';
-  actions.appendChild(actionButton(t('queryFilter'), t('queryTip'), applyFromInput));
-  actions.appendChild(actionButton(t('queryReset'), t('queryTip'), resetQuery));
+  actions.appendChild(actionButton(t('queryFilter'), t('queryFilterTip'), applyFromInput));
+  actions.appendChild(actionButton(t('queryReset'), t('queryResetTip'), resetQuery));
   actions.appendChild(actionButton('?', t('help'), showHelp));
 
   var message = document.createElement('div');

@@ -2,7 +2,7 @@
 // @author         Takurua(@yuehuTi)
 // @name           IITC plugin: Portal filter
 // @category       Portal
-// @version        0.1.1
+// @version        0.1.2
 // @description    Show only portals that match an expression, using data already on the map.
 // @id             portal-filter
 // @namespace      https://github.com/IITC-CE/ingress-intel-total-conversion

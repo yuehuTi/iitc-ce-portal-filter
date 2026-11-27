@@ -19,6 +19,8 @@ team = enemy health < 50
 
 点过滤或按回车生效。点重置，或把表达式清空后再过滤，恢复全部 Portal。表达式写错时输入标红，当前地图不变。会自动记忆上次成功的表达式会，刷新/重开后仍然生效。
 
+点「添加 Marker」会在 Draw tools 里给当前过滤出来的 Portal 各放一个 marker。同一位置已经有 marker 时不会重复添加。需要先启用 Draw tools，并且先过滤。
+
 ## 文件
 
 - `portal-filter.js`：IITC-CE 插件源码，构建时复制为 `plugins/portal-filter.js`

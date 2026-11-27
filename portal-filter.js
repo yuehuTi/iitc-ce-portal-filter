@@ -1,13 +1,17 @@
 // @author         Takurua(@yuehuTi)
 // @name           Portal filter
 // @category       Portal
-// @version        0.1.1
+// @version        0.1.2
 // @description    Show only portals that match an expression, using data already on the map.
 
 /* exported setup, changelog --eslint */
 /* global IITC -- eslint */
 
 var changelog = [
+  {
+    version: '0.1.2',
+    changes: ['Add a button that places Draw tools markers on the portals the filter is showing'],
+  },
   {
     version: '0.1.1',
     changes: ['Filter by visited, captured and scout, loading portal history when the expression needs it'],
@@ -37,6 +41,11 @@ var I18N_EN = {
   queryTip: 'Portals that match this expression stay on the map. An invalid expression turns red and leaves the map unchanged.',
   queryFilterTip: 'Apply the expression.',
   queryResetTip: 'Clear the expression and show every portal again.',
+  addMarker: 'Marker',
+  addMarkerTip: 'Place a Draw tools marker on each portal the filter is showing.',
+  needFilter: 'Filter portals before adding markers',
+  needDrawTools: 'Enable the Draw tools plugin first',
+  noMatch: 'No matching portals',
   queryInvalid: 'Invalid expression',
   queryIncomplete: 'Incomplete expression',
   queryParen: 'Missing closing parenthesis',
@@ -56,6 +65,11 @@ var I18N_ZH = {
   queryTip: '地图只保留符合这个表达式的 Portal。表达式无效时输入标红，当前地图不变。',
   queryFilterTip: '按表达式过滤。',
   queryResetTip: '清空表达式，重新显示全部 Portal。',
+  addMarker: '添加 Marker',
+  addMarkerTip: '在 Draw tools 中为当前过滤出的 Portal 打 marker。',
+  needFilter: '先过滤，再给符合条件的 Portal 打 Marker',
+  needDrawTools: '需要先启用 Draw tools 插件',
+  noMatch: '没有符合条件的 Portal',
   queryInvalid: '表达式无效',
   queryIncomplete: '表达式不完整',
   queryParen: '缺少右括号',
@@ -80,6 +94,7 @@ function helpBodyHtml() {
   if (USE_ZH) {
     return [
       '<p>过滤框在右侧 Toolbox 上方。点过滤或按回车后，地图只留下符合表达式的 Portal。点重置，或表达式为空，即恢复全部。表达式写错时输入标红，当前地图不变。</p>',
+      '<p>点「添加 Marker」会在 Draw tools 里给当前过滤出来的 Portal 各放一个 marker。同一位置已经有 marker 时不会重复添加。需要先启用 Draw tools，并且先过滤。</p>',
       '<h3>运算符</h3>',
       '<ul>',
       '<li><code>AND</code>、<code>且</code>：两个条件都成立。紧挨着写的条件也是 AND，例如 <code>level &gt;= 6 team = ENL</code>。</li>',
@@ -125,6 +140,7 @@ function helpBodyHtml() {
   }
   return [
     '<p>The box above the toolbox filters the map. Filter, or press Enter, leaves only the portals that match. Reset, or an empty expression, shows every portal again. An invalid expression turns red and leaves the map unchanged.</p>',
+    '<p>Marker places a Draw tools marker on each portal the filter is showing. A spot that already has a marker is left as it is. Draw tools has to be enabled, and a filter has to be applied first.</p>',
     '<h3>Operators</h3>',
     '<ul>',
     '<li><code>AND</code>: both sides match. Adjacent terms are also AND, for example <code>level &gt;= 6 team = ENL</code>.</li>',
@@ -985,6 +1001,63 @@ function resetQuery() {
   applyQueryText('');
 }
 
+function markerKey(latlng) {
+  return latlng.lat.toFixed(6) + ',' + latlng.lng.toFixed(6);
+}
+
+function existingMarkerKeys(drawnItems) {
+  var keys = Object.create(null);
+  drawnItems.eachLayer(function (layer) {
+    if (!layer || typeof layer.getLatLng !== 'function') return;
+    if (typeof layer.getRadius === 'function' || typeof layer.getLatLngs === 'function') return;
+    var pos = layer.getLatLng();
+    if (pos) keys[markerKey(pos)] = true;
+  });
+  return keys;
+}
+
+function addDrawMarkers() {
+  if (!ns.predicate) {
+    alert(t('needFilter'));
+    return;
+  }
+  var drawTools = window.plugin.drawTools;
+  if (!drawTools || !drawTools.drawnItems || !window.L) {
+    alert(t('needDrawTools'));
+    return;
+  }
+  var portals = [];
+  if (window.portals) {
+    for (var guid in window.portals) {
+      var portal = window.portals[guid];
+      if (portal && portalMatches(portal)) portals.push(portal);
+    }
+  }
+  if (!portals.length) {
+    alert(t('noMatch'));
+    return;
+  }
+  var opts = window.L.extend({}, drawTools.markerOptions || {});
+  var taken = existingMarkerKeys(drawTools.drawnItems);
+  var added = 0;
+  portals.forEach(function (portal) {
+    if (typeof portal.getLatLng !== 'function') return;
+    var latlng = portal.getLatLng();
+    if (!latlng) return;
+    var key = markerKey(latlng);
+    if (taken[key]) return;
+    taken[key] = true;
+    var marker = window.L.marker(latlng, opts);
+    drawTools.drawnItems.addLayer(marker);
+    if (typeof window.registerMarkerForOMS === 'function') window.registerMarkerForOMS(marker);
+    if (typeof window.runHooks === 'function') {
+      window.runHooks('pluginDrawTools', { event: 'layerCreated', layer: marker });
+    }
+    added++;
+  });
+  if (added && typeof drawTools.save === 'function') drawTools.save();
+}
+
 function showHelp() {
   var html = '<div class="portal-filter-help">' + helpBodyHtml() + '</div>';
   if (typeof window.dialog === 'function') {
@@ -1050,6 +1123,7 @@ function mountControl() {
   actions.className = 'portal-filter-actions';
   actions.appendChild(actionButton(t('queryFilter'), t('queryFilterTip'), applyFromInput));
   actions.appendChild(actionButton(t('queryReset'), t('queryResetTip'), resetQuery));
+  actions.appendChild(actionButton(t('addMarker'), t('addMarkerTip'), addDrawMarkers));
   actions.appendChild(actionButton('?', t('help'), showHelp));
 
   var message = document.createElement('div');

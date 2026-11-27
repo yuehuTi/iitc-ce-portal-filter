@@ -2,7 +2,7 @@
 // @author         Takurua(@yuehuTi)
 // @name           IITC plugin: Portal filter
 // @category       Portal
-// @version        0.1.1
+// @version        0.1.2
 // @description    Show only portals that match an expression, using data already on the map.
 // @id             portal-filter
 // @namespace      https://github.com/IITC-CE/ingress-intel-total-conversion
@@ -20,13 +20,17 @@ function wrapper(plugin_info) {
   // @author         Takurua(@yuehuTi)
   // @name           Portal filter
   // @category       Portal
-  // @version        0.1.1
+  // @version        0.1.2
   // @description    Show only portals that match an expression, using data already on the map.
 
   /* exported setup, changelog --eslint */
   /* global IITC -- eslint */
 
   var changelog = [
+    {
+      version: '0.1.2',
+      changes: ['Add a button that places Draw tools markers on the portals the filter is showing'],
+    },
     {
       version: '0.1.1',
       changes: ['Filter by visited, captured and scout, loading portal history when the expression needs it'],
@@ -56,6 +60,11 @@ function wrapper(plugin_info) {
     queryTip: 'Portals that match this expression stay on the map. An invalid expression turns red and leaves the map unchanged.',
     queryFilterTip: 'Apply the expression.',
     queryResetTip: 'Clear the expression and show every portal again.',
+    addMarker: 'Marker',
+    addMarkerTip: 'Place a Draw tools marker on each portal the filter is showing.',
+    needFilter: 'Filter portals before adding markers',
+    needDrawTools: 'Enable the Draw tools plugin first',
+    noMatch: 'No matching portals',
     queryInvalid: 'Invalid expression',
     queryIncomplete: 'Incomplete expression',
     queryParen: 'Missing closing parenthesis',
@@ -75,6 +84,11 @@ function wrapper(plugin_info) {
     queryTip: '地图只保留符合这个表达式的 Portal。表达式无效时输入标红，当前地图不变。',
     queryFilterTip: '按表达式过滤。',
     queryResetTip: '清空表达式，重新显示全部 Portal。',
+    addMarker: '添加 Marker',
+    addMarkerTip: '在 Draw tools 中为当前过滤出的 Portal 打 marker。',
+    needFilter: '先过滤，再给符合条件的 Portal 打 Marker',
+    needDrawTools: '需要先启用 Draw tools 插件',
+    noMatch: '没有符合条件的 Portal',
     queryInvalid: '表达式无效',
     queryIncomplete: '表达式不完整',
     queryParen: '缺少右括号',
@@ -99,6 +113,7 @@ function wrapper(plugin_info) {
     if (USE_ZH) {
       return [
         '<p>过滤框在右侧 Toolbox 上方。点过滤或按回车后，地图只留下符合表达式的 Portal。点重置，或表达式为空，即恢复全部。表达式写错时输入标红，当前地图不变。</p>',
+      '<p>点「添加 Marker」会在 Draw tools 里给当前过滤出来的 Portal 各放一个 marker。同一位置已经有 marker 时不会重复添加。需要先启用 Draw tools，并且先过滤。</p>',
         '<h3>运算符</h3>',
         '<ul>',
         '<li><code>AND</code>、<code>且</code>：两个条件都成立。紧挨着写的条件也是 AND，例如 <code>level &gt;= 6 team = ENL</code>。</li>',
@@ -144,6 +159,7 @@ function wrapper(plugin_info) {
     }
     return [
       '<p>The box above the toolbox filters the map. Filter, or press Enter, leaves only the portals that match. Reset, or an empty expression, shows every portal again. An invalid expression turns red and leaves the map unchanged.</p>',
+    '<p>Marker places a Draw tools marker on each portal the filter is showing. A spot that already has a marker is left as it is. Draw tools has to be enabled, and a filter has to be applied first.</p>',
       '<h3>Operators</h3>',
       '<ul>',
       '<li><code>AND</code>: both sides match. Adjacent terms are also AND, for example <code>level &gt;= 6 team = ENL</code>.</li>',
@@ -1004,6 +1020,63 @@ function wrapper(plugin_info) {
     applyQueryText('');
   }
 
+  function markerKey(latlng) {
+    return latlng.lat.toFixed(6) + ',' + latlng.lng.toFixed(6);
+  }
+
+  function existingMarkerKeys(drawnItems) {
+    var keys = Object.create(null);
+    drawnItems.eachLayer(function (layer) {
+      if (!layer || typeof layer.getLatLng !== 'function') return;
+      if (typeof layer.getRadius === 'function' || typeof layer.getLatLngs === 'function') return;
+      var pos = layer.getLatLng();
+      if (pos) keys[markerKey(pos)] = true;
+    });
+    return keys;
+  }
+
+  function addDrawMarkers() {
+    if (!ns.predicate) {
+      alert(t('needFilter'));
+      return;
+    }
+    var drawTools = window.plugin.drawTools;
+    if (!drawTools || !drawTools.drawnItems || !window.L) {
+      alert(t('needDrawTools'));
+      return;
+    }
+    var portals = [];
+    if (window.portals) {
+      for (var guid in window.portals) {
+        var portal = window.portals[guid];
+        if (portal && portalMatches(portal)) portals.push(portal);
+      }
+    }
+    if (!portals.length) {
+      alert(t('noMatch'));
+      return;
+    }
+    var opts = window.L.extend({}, drawTools.markerOptions || {});
+    var taken = existingMarkerKeys(drawTools.drawnItems);
+    var added = 0;
+    portals.forEach(function (portal) {
+      if (typeof portal.getLatLng !== 'function') return;
+      var latlng = portal.getLatLng();
+      if (!latlng) return;
+      var key = markerKey(latlng);
+      if (taken[key]) return;
+      taken[key] = true;
+      var marker = window.L.marker(latlng, opts);
+      drawTools.drawnItems.addLayer(marker);
+      if (typeof window.registerMarkerForOMS === 'function') window.registerMarkerForOMS(marker);
+      if (typeof window.runHooks === 'function') {
+        window.runHooks('pluginDrawTools', { event: 'layerCreated', layer: marker });
+      }
+      added++;
+    });
+    if (added && typeof drawTools.save === 'function') drawTools.save();
+  }
+
   function showHelp() {
     var html = '<div class="portal-filter-help">' + helpBodyHtml() + '</div>';
     if (typeof window.dialog === 'function') {
@@ -1069,6 +1142,7 @@ function wrapper(plugin_info) {
     actions.className = 'portal-filter-actions';
     actions.appendChild(actionButton(t('queryFilter'), t('queryFilterTip'), applyFromInput));
     actions.appendChild(actionButton(t('queryReset'), t('queryResetTip'), resetQuery));
+    actions.appendChild(actionButton(t('addMarker'), t('addMarkerTip'), addDrawMarkers));
     actions.appendChild(actionButton('?', t('help'), showHelp));
 
     var message = document.createElement('div');
@@ -1094,7 +1168,7 @@ function wrapper(plugin_info) {
     if (document.getElementById('portal-filter-css')) return;
     var style = document.createElement('style');
     style.id = 'portal-filter-css';
-    style.textContent = '#portal-filter {\n  padding: 6px 8px 8px;\n  color: #eee;\n}\n\n#portal-filter .portal-filter-title {\n  display: block;\n  margin: 0 0 4px;\n  color: #ffce00;\n  font-size: 15px;\n  line-height: 20px;\n}\n\n#portal-filter .portal-filter-row {\n  display: flex;\n  align-items: center;\n}\n\n#portal-filter .portal-filter-input {\n  flex: 1 1 auto;\n  min-width: 0;\n  width: 100%;\n}\n\n#portal-filter .portal-filter-input.query-error {\n  color: #ff4d4d;\n}\n\n#portal-filter.is-active .portal-filter-input {\n  box-shadow: inset 0 0 0 1px #ffce00;\n}\n\n#portal-filter .portal-filter-actions {\n  display: flex;\n  gap: 4px;\n  margin-top: 4px;\n}\n\n#portal-filter .portal-filter-actions button {\n  background: none;\n  border: 0;\n  color: #ffce00;\n  font: inherit;\n  line-height: 22px;\n  padding: 0 4px;\n}\n\n#portal-filter .portal-filter-actions button:hover {\n  text-decoration: underline;\n}\n\nbody.smartphone #portal-filter .portal-filter-actions button {\n  border: 2px outset #20a8b1;\n  padding: 4px 8px;\n  text-decoration: none;\n}\n\n#portal-filter .portal-filter-message {\n  margin: 4px 0 0;\n  color: #ff4d4d;\n  font-size: 12px;\n  line-height: 1.35;\n  word-break: break-word;\n}\n\n#portal-filter .portal-filter-status {\n  margin: 4px 0 0;\n  color: #ffce00;\n  font-size: 12px;\n  line-height: 1.35;\n}\n\n.portal-filter-help h3 {\n  margin: 12px 0 6px;\n  color: #ffce00;\n  font-size: 15px;\n}\n\n.portal-filter-help p,\n.portal-filter-help li {\n  margin: 4px 0;\n}\n\n.portal-filter-help ul {\n  margin: 4px 0 8px;\n  padding-left: 1.2em;\n}\n\n.portal-filter-help code {\n  font-family: Menlo, Consolas, monospace;\n  font-size: 12px;\n}\n';
+    style.textContent = '#portal-filter {\n  padding: 6px 8px 8px;\n  color: #eee;\n}\n\n#portal-filter .portal-filter-title {\n  display: block;\n  margin: 0 0 4px;\n  color: #ffce00;\n  font-size: 15px;\n  line-height: 20px;\n}\n\n#portal-filter .portal-filter-row {\n  display: flex;\n  align-items: center;\n}\n\n#portal-filter .portal-filter-input {\n  flex: 1 1 auto;\n  min-width: 0;\n  width: 100%;\n}\n\n#portal-filter .portal-filter-input.query-error {\n  color: #ff4d4d;\n}\n\n#portal-filter.is-active .portal-filter-input {\n  box-shadow: inset 0 0 0 1px #ffce00;\n}\n\n#portal-filter .portal-filter-actions {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 4px;\n  margin-top: 4px;\n}\n\n#portal-filter .portal-filter-actions button {\n  background: none;\n  border: 0;\n  color: #ffce00;\n  font: inherit;\n  line-height: 22px;\n  padding: 0 4px;\n}\n\n#portal-filter .portal-filter-actions button:hover {\n  text-decoration: underline;\n}\n\nbody.smartphone #portal-filter .portal-filter-actions button {\n  border: 2px outset #20a8b1;\n  padding: 4px 8px;\n  text-decoration: none;\n}\n\n#portal-filter .portal-filter-message {\n  margin: 4px 0 0;\n  color: #ff4d4d;\n  font-size: 12px;\n  line-height: 1.35;\n  word-break: break-word;\n}\n\n#portal-filter .portal-filter-status {\n  margin: 4px 0 0;\n  color: #ffce00;\n  font-size: 12px;\n  line-height: 1.35;\n}\n\n.portal-filter-help h3 {\n  margin: 12px 0 6px;\n  color: #ffce00;\n  font-size: 15px;\n}\n\n.portal-filter-help p,\n.portal-filter-help li {\n  margin: 4px 0;\n}\n\n.portal-filter-help ul {\n  margin: 4px 0 8px;\n  padding-left: 1.2em;\n}\n\n.portal-filter-help code {\n  font-family: Menlo, Consolas, monospace;\n  font-size: 12px;\n}\n';
     (document.head || document.documentElement).appendChild(style);
   }
 
